@@ -29,7 +29,7 @@ def set_logger(log_path) -> logging.Logger:
 
 
 kafka_producer = KafkaProducer(
-    bootstrap_servers="127.0.0.1:9092",
+    bootstrap_servers="3.36.83.5:9092",
     value_serializer=lambda x: json.dumps(x).encode('utf-8'),
 )
 
