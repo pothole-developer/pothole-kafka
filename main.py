@@ -10,8 +10,22 @@ import json
 import logging
 import logging.handlers
 from rich.logging import RichHandler
+import uuid
+from datetime import datetime
+# import os
+# import tempfile
+# import gzip
+# import shutil
 
 app = Flask(__name__)
+
+kafka_producer = KafkaProducer(
+    bootstrap_servers="3.36.83.5:9092",
+    value_serializer=lambda x: json.dumps(x).encode('utf-8'),
+    max_request_size=10485760
+)
+
+KAFKA_TOPIC = 'pothole-detection'
 
 RICH_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 FILE_HANDLER_FORMAT = "[%(asctime)s]\\t%(levelname)s\\t[%(filename)s:%(funcName)s:%(lineno)s]\\t>> %(message)s"
@@ -30,16 +44,6 @@ def set_logger(log_path) -> logging.Logger:
 
     return logger
 
-
-kafka_producer = KafkaProducer(
-    bootstrap_servers="3.36.83.5:9092",
-    value_serializer=lambda x: json.dumps(x).encode('utf-8'),
-    max_request_size=10485760
-)
-
-KAFKA_TOPIC = 'pothole-detection'
-
-
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "UP"}), 200
@@ -47,30 +51,61 @@ def health():
 
 @app.route('/detect', methods=['POST'])
 def detect():
-    logger = set_logger('./demo.log')
+    # 로그 기록
+    logger = set_logger('./pothole-kafka.log')
 
-    if 'images' not in request.files:
-        return 'No images part in the request', 400
+    if 'video' not in request.files:
+        return 'No video in the request', 400
 
-    images = request.files.get('images')
-    images = base64.b64encode(images.read()).decode('utf-8')
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+    video = request.files.get('video')
+    video_string = base64.b64encode(video.read()).decode('utf-8')
 
-    kafka_message = {
-        'images': images
+    # # 임시 파일 생성 및 압축
+    # with tempfile.NamedTemporaryFile(delete=True) as temp_video:
+    #     video.save(temp_video.name)
+    #     compressed_file_path = compress_file(temp_video.name, 'video.mp4.gz')
+    #
+    # # 압축된 파일 읽기
+    # with open(compressed_file_path, 'rb') as f:
+    #     video_zip = f.read()
+    #
+    # base64.b64encode(video_zip).decode('utf-8')
+
+    # 메세지 생성
+    current_time = datetime.now().strftime('%Y%m%d%H%M%S%f')
+    UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, current_time))
+
+    kafka_msg = {
+        'id': UUID,
+        'content': {
+            'lat': lat,  # 위도
+            'lon': lon,  # 경도
+            'video': video_string
+        }
     }
 
+    # kafka에 전송
     try:
-        future = kafka_producer.send(topic=KAFKA_TOPIC, value=kafka_message)
+        future = kafka_producer.send(topic=KAFKA_TOPIC, value=kafka_msg)
 
         future.add_callback(lambda metadata: logger.info(
-            f"Message sent to {metadata.topic} Success!"))
+            f"Message {[UUID]} sent to {[metadata.topic]} Success!"))
 
         future.add_errback(lambda e: logger.error(str(e)))
         return jsonify({"status": "OK"}), 200
+
     except Exception as e:
         logger.error(f"Failed to send message to Kafka: {str(e)}")
         return jsonify({"status": "FAIL"}), 400
 
+
+# def compress_file(input_file, output_file):
+#     with open(input_file, 'rb') as f_in:
+#         with gzip.open(output_file, 'wb') as f_out:
+#             shutil.copyfileobj(f_in, f_out)
+#     return output_file
 
 
 if __name__ == '__main__':
