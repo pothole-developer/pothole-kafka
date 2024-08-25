@@ -33,8 +33,8 @@ def set_logger(log_path) -> logging.Logger:
 
 kafka_producer = KafkaProducer(
     bootstrap_servers="3.36.83.5:9092",
-    max_request_size=10000000
-    #value_serializer=lambda x: json.dumps(x).encode('utf-8'),
+    value_serializer=lambda x: json.dumps(x).encode('utf-8'),
+    max_request_size=10485760
 )
 
 KAFKA_TOPIC = 'pothole-detection'
@@ -52,26 +52,11 @@ def detect():
     if 'images' not in request.files:
         return 'No images part in the request', 400
 
-    # lat = request.form.get('lat')
-    # lon = request.form.get('lon')
-    # importance = request.form.get('importance')
-    # dangerous = request.form.get('dangerous')
-    # images = request.files.getlist('images')
     images = request.files.get('images')
-
-    # image_data_list = []
-
-    # for image_file in images:
-    #     image_data = image_file.read()
-    #     image_data_list.append(base64.b64encode(image_data).decode('utf-8'))
+    images = base64.b64encode(images.read()).decode('utf-8')
 
     kafka_message = {
-        # 'lat': lat,
-        # 'lon': lon,
-        # 'importance': importance,
-        # 'dangerous': dangerous,
-        # 'images': image_data_list
-        'images': images.read()
+        'images': images
     }
 
     try:
@@ -79,11 +64,13 @@ def detect():
 
         future.add_callback(lambda metadata: logger.info(
             f"Message sent to {metadata.topic} Success!"))
+
         future.add_errback(lambda e: logger.error(str(e)))
+        return jsonify({"status": "OK"}), 200
     except Exception as e:
         logger.error(f"Failed to send message to Kafka: {str(e)}")
+        return jsonify({"status": "FAIL"}), 400
 
-    return jsonify({"status": "OK"}), 200
 
 
 if __name__ == '__main__':
