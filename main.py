@@ -37,7 +37,7 @@ kafka_producer = KafkaProducer(
     #value_serializer=lambda x: json.dumps(x).encode('utf-8'),
 )
 
-KAFKA_TOPIC = 'topic-create-apache'
+KAFKA_TOPIC = 'pothole-detection'
 
 
 @app.route('/health', methods=['GET'])
@@ -52,10 +52,10 @@ def detect():
     if 'images' not in request.files:
         return 'No images part in the request', 400
 
-    lat = request.form.get('lat')
-    lon = request.form.get('lon')
-    importance = request.form.get('importance')
-    dangerous = request.form.get('dangerous')
+    # lat = request.form.get('lat')
+    # lon = request.form.get('lon')
+    # importance = request.form.get('importance')
+    # dangerous = request.form.get('dangerous')
     # images = request.files.getlist('images')
     images = request.files.get('images')
 
@@ -66,10 +66,10 @@ def detect():
     #     image_data_list.append(base64.b64encode(image_data).decode('utf-8'))
 
     kafka_message = {
-        'lat': lat,
-        'lon': lon,
-        'importance': importance,
-        'dangerous': dangerous,
+        # 'lat': lat,
+        # 'lon': lon,
+        # 'importance': importance,
+        # 'dangerous': dangerous,
         # 'images': image_data_list
         'images': images.read()
     }
