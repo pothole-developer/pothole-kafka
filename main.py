@@ -33,7 +33,8 @@ def set_logger(log_path) -> logging.Logger:
 
 kafka_producer = KafkaProducer(
     bootstrap_servers="3.36.83.5:9092",
-    value_serializer=lambda x: json.dumps(x).encode('utf-8'),
+    max_request_size=10000000
+    #value_serializer=lambda x: json.dumps(x).encode('utf-8'),
 )
 
 KAFKA_TOPIC = 'topic-create-apache'
