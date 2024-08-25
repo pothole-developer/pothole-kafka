@@ -1,5 +1,8 @@
 #https://velog.io/@joon6093/%EA%B3%B5%EB%B6%80%EC%A0%95%EB%A6%AC-Flask%EC%97%90%EC%84%9C-eureka-kafka-logging-%EC%82%AC%EC%9A%A9%ED%95%98%EA%B8%B0
 
+# pip install kafka-python
+# pip install rich.logging
+
 import base64
 from flask import Flask, request, jsonify
 from kafka import KafkaProducer
@@ -52,20 +55,22 @@ def detect():
     lon = request.form.get('lon')
     importance = request.form.get('importance')
     dangerous = request.form.get('dangerous')
-    images = request.files.getlist('images')
+    # images = request.files.getlist('images')
+    images = request.files.get('images')
 
-    image_data_list = []
+    # image_data_list = []
 
-    for image_file in images:
-        image_data = image_file.read()
-        image_data_list.append(base64.b64encode(image_data).decode('utf-8'))
+    # for image_file in images:
+    #     image_data = image_file.read()
+    #     image_data_list.append(base64.b64encode(image_data).decode('utf-8'))
 
     kafka_message = {
         'lat': lat,
         'lon': lon,
         'importance': importance,
         'dangerous': dangerous,
-        'images': image_data_list
+        # 'images': image_data_list
+        'images': images.read()
     }
 
     try:
